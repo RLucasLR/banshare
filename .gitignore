@@ -37,3 +37,4 @@ banshare-db.sqllite-shm
 banshare-db.sqllite-wal
 banshare-db.sqllite
 evidence/
+old-logs.txt
