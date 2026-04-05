@@ -104,6 +104,28 @@ export class Server {
 
 	public static add(input: ServerAddInput): Server {
 		const db = connectDb();
+
+		// check for existing disabled record (from previous soft-delete)
+		const existing = db
+			.prepare<unknown[], Pick<ServerRow, '_id'>>('SELECT _id FROM servers WHERE collectionId = ? AND guildId = ?')
+			.get(input.collectionId, input.guildId);
+
+		if (existing) {
+			// re-enable the existing record
+			db.prepare(
+				`UPDATE servers SET
+					addedAt = ?,
+					addedBy = ?,
+					loggingChannelId = ?,
+					syncOnJoin = ?,
+					enabled = 1
+				WHERE _id = ?`
+			).run(nowIso(), input.addedBy, input.loggingChannelId ?? null, toDbBool(input.syncOnJoin ?? true), existing._id);
+
+			console.log(`[DB] Server re-enabled: id=${existing._id} guildId=${input.guildId} collectionId=${input.collectionId}`);
+			return new Server(existing._id);
+		}
+
 		const id = newId();
 
 		db.prepare(

@@ -1,20 +1,20 @@
 import Database from 'better-sqlite3';
-import path from 'node:path';
 
 let db: Database.Database | null = null;
 
-const getDbFilePath = () => {
-	return path.resolve(__dirname, '..', '..', 'banshare-db.sqllite');
-};
-
 export const connectDb = (): Database.Database => {
 	if (db) return db;
-
-	db = new Database(getDbFilePath());
+	db = new Database(':memory:');
 	db.pragma('journal_mode = WAL');
 	db.pragma('foreign_keys = ON');
-
 	return db;
+};
+
+export const resetDb = (): void => {
+	if (db) {
+		db.close();
+		db = null;
+	}
 };
 
 export const initDb = (): void => {
@@ -107,20 +107,6 @@ export const initDb = (): void => {
 		CREATE INDEX IF NOT EXISTS auditLogs_collection_idx ON auditLogs (collectionId);
 		CREATE INDEX IF NOT EXISTS auditLogs_collection_time_idx ON auditLogs (collectionId, performedAt);
 		CREATE INDEX IF NOT EXISTS auditLogs_action_idx ON auditLogs (action);
-	`);
-
-	// migrations for existing databases
-	const tableInfo = database.prepare('PRAGMA table_info(collections)').all() as { name: string }[];
-	const columnNames = tableInfo.map((col) => col.name);
-
-	if (!columnNames.includes('requireEvidence')) {
-		database.exec(`ALTER TABLE collections ADD COLUMN requireEvidence INTEGER NOT NULL DEFAULT 0 CHECK (requireEvidence IN (0, 1))`);
-	}
-	if (!columnNames.includes('allowExpiry')) {
-		database.exec(`ALTER TABLE collections ADD COLUMN allowExpiry INTEGER NOT NULL DEFAULT 1 CHECK (allowExpiry IN (0, 1))`);
-	}
-
-	database.exec(`
 
 		CREATE TABLE IF NOT EXISTS invites (
 			_id TEXT PRIMARY KEY,

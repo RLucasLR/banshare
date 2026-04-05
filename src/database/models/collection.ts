@@ -12,6 +12,8 @@ export interface CollectionCreateInput {
 	onServerRemove?: OnServerRemovePolicy;
 	dmOnBan?: boolean;
 	analyticsEnabled?: boolean;
+	requireEvidence?: boolean;
+	allowExpiry?: boolean;
 	maxLinkedServers?: number;
 }
 
@@ -26,6 +28,8 @@ interface CollectionRow {
 	onServerRemove: OnServerRemovePolicy;
 	dmOnBan: 0 | 1;
 	analyticsEnabled: 0 | 1;
+	requireEvidence: 0 | 1;
+	allowExpiry: 0 | 1;
 	maxLinkedServers: number;
 }
 
@@ -97,6 +101,20 @@ export class Collection {
 		this._analyticsEnabled = value;
 	}
 
+	public get requireEvidence(): boolean {
+		return this._requireEvidence;
+	}
+	public set requireEvidence(value: boolean) {
+		this._requireEvidence = value;
+	}
+
+	public get allowExpiry(): boolean {
+		return this._allowExpiry;
+	}
+	public set allowExpiry(value: boolean) {
+		this._allowExpiry = value;
+	}
+
 	public get maxLinkedServers(): number {
 		return this._maxLinkedServers;
 	}
@@ -117,6 +135,8 @@ export class Collection {
 	private _onServerRemove!: OnServerRemovePolicy;
 	private _dmOnBan!: boolean;
 	private _analyticsEnabled!: boolean;
+	private _requireEvidence!: boolean;
+	private _allowExpiry!: boolean;
 	private _maxLinkedServers!: number;
 
 	public constructor(id: string) {
@@ -138,6 +158,8 @@ export class Collection {
 		this._onServerRemove = row.onServerRemove;
 		this._dmOnBan = fromDbBool(row.dmOnBan);
 		this._analyticsEnabled = fromDbBool(row.analyticsEnabled);
+		this._requireEvidence = fromDbBool(row.requireEvidence);
+		this._allowExpiry = fromDbBool(row.allowExpiry);
 		this._maxLinkedServers = row.maxLinkedServers;
 	}
 
@@ -164,8 +186,10 @@ export class Collection {
 				onServerRemove,
 				dmOnBan,
 				analyticsEnabled,
+				requireEvidence,
+				allowExpiry,
 				maxLinkedServers
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		).run(
 			id,
 			input.mainGuildId,
@@ -177,6 +201,8 @@ export class Collection {
 			input.onServerRemove ?? 'retain',
 			toDbBool(input.dmOnBan ?? false),
 			toDbBool(input.analyticsEnabled ?? false),
+			toDbBool(input.requireEvidence ?? false),
+			toDbBool(input.allowExpiry ?? true),
 			maxLinkedServers
 		);
 
@@ -221,6 +247,8 @@ export class Collection {
 					onServerRemove = ?,
 					dmOnBan = ?,
 					analyticsEnabled = ?,
+					requireEvidence = ?,
+					allowExpiry = ?,
 					maxLinkedServers = ?
 				WHERE _id = ?`
 			)
@@ -232,6 +260,8 @@ export class Collection {
 				this._onServerRemove,
 				toDbBool(this._dmOnBan),
 				toDbBool(this._analyticsEnabled),
+				toDbBool(this._requireEvidence),
+				toDbBool(this._allowExpiry),
 				this._maxLinkedServers,
 				this._id
 			);
@@ -244,6 +274,7 @@ export class Collection {
 		const db = connectDb();
 
 		const tx = db.transaction(() => {
+			db.prepare('DELETE FROM invites WHERE collectionId = ?').run(this._id);
 			db.prepare('DELETE FROM auditLogs WHERE collectionId = ?').run(this._id);
 			db.prepare('DELETE FROM moderators WHERE collectionId = ?').run(this._id);
 			db.prepare('DELETE FROM bans WHERE collectionId = ?').run(this._id);

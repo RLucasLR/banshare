@@ -160,6 +160,24 @@ export class CollectionEditCommand extends Command {
 				'Analytics',
 				'When enabled, analytics data will be collected for this collection.'
 			);
+		} else if (customId === 'collection-edit:toggle-require-evidence') {
+			await this.handleToggleSetting(
+				buttonInteraction,
+				collection,
+				originalInteraction,
+				'requireEvidence',
+				'Require Evidence',
+				'When enabled, moderators must attach at least one evidence file to every ban. The confirm button is disabled until they upload something.'
+			);
+		} else if (customId === 'collection-edit:toggle-allow-expiry') {
+			await this.handleToggleSetting(
+				buttonInteraction,
+				collection,
+				originalInteraction,
+				'allowExpiry',
+				'Allow Expiry',
+				'When enabled, moderators can set expiration dates on bans. Turn this off if you want all bans to be permanent.'
+			);
 		}
 		// policy selector
 		else if (customId === 'collection-edit:edit-on-server-remove') {
@@ -343,7 +361,7 @@ export class CollectionEditCommand extends Command {
 		buttonInteraction: ButtonInteraction,
 		collection: Collection,
 		originalInteraction: Command.ChatInputCommandInteraction,
-		field: 'loggingEnabledAtCollectionLevel' | 'dmOnBan' | 'analyticsEnabled',
+		field: 'loggingEnabledAtCollectionLevel' | 'dmOnBan' | 'analyticsEnabled' | 'requireEvidence' | 'allowExpiry',
 		displayName: string,
 		description: string
 	) {
@@ -605,6 +623,16 @@ export class CollectionEditCommand extends Command {
 					inline: true
 				},
 				{
+					name: 'Require Evidence',
+					value: collection.requireEvidence ? '`Enabled`' : '`Disabled`',
+					inline: true
+				},
+				{
+					name: 'Allow Expiry',
+					value: collection.allowExpiry ? '`Enabled`' : '`Disabled`',
+					inline: true
+				},
+				{
 					name: 'On Server Remove',
 					value: `\`${collection.onServerRemove}\``,
 					inline: true
@@ -638,8 +666,22 @@ export class CollectionEditCommand extends Command {
 			new ButtonBuilder().setCustomId('collection-edit:toggle-analytics').setLabel('Analytics').setStyle(ButtonStyle.Secondary).setEmoji('📊')
 		);
 
-		// row 3 - policy + done
+		// row 3 - more toggles
 		const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder()
+				.setCustomId('collection-edit:toggle-require-evidence')
+				.setLabel('Require Evidence')
+				.setStyle(ButtonStyle.Secondary)
+				.setEmoji('📎'),
+			new ButtonBuilder()
+				.setCustomId('collection-edit:toggle-allow-expiry')
+				.setLabel('Allow Expiry')
+				.setStyle(ButtonStyle.Secondary)
+				.setEmoji('⏳')
+		);
+
+		// row 4 - policy + done
+		const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder()
 				.setCustomId('collection-edit:edit-on-server-remove')
 				.setLabel('On Server Remove')
@@ -648,7 +690,7 @@ export class CollectionEditCommand extends Command {
 			new ButtonBuilder().setCustomId('collection-edit:done').setLabel('Done').setStyle(ButtonStyle.Success).setEmoji('✅')
 		);
 
-		return [row1, row2, row3];
+		return [row1, row2, row3, row4];
 	}
 
 	private doneEmbed(collection: Collection): EmbedBuilder {

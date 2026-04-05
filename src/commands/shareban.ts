@@ -17,7 +17,7 @@ import {
 	User
 } from 'discord.js';
 import { Collection as BanCollection } from '../database/models/collection';
-import { Ban } from '../database/models/ban';
+import { Ban, EvidenceEntry } from '../database/models/ban';
 import { Server } from '../database/models/server';
 import { Moderator } from '../database/models/moderator';
 import { logAction } from '../lib/utils';
@@ -279,6 +279,14 @@ export class ShareBanCommand extends Command {
 		if (!collection) {
 			return interaction.reply({
 				embeds: [this.errorEmbed('Could not find the collection for this server.')],
+				ephemeral: true
+			});
+		}
+
+		// prevent self-ban
+		if (targetUser.id === executorId) {
+			return interaction.reply({
+				embeds: [this.errorEmbed('You cannot ban yourself.')],
 				ephemeral: true
 			});
 		}
@@ -1619,6 +1627,15 @@ export class ShareBanCommand extends Command {
 			}
 		}
 
+		// convert evidence files to db entries
+		const evidenceEntries: EvidenceEntry[] = config.evidence.map((ef) => ({
+			id: ef.id,
+			type: (ef.mimeType.startsWith('image/') ? 'image' : ef.mimeType.startsWith('video/') ? 'image' : 'text') as EvidenceEntry['type'],
+			storage: 'external' as const,
+			ref: path.basename(ef.storedPath),
+			sizeBytes: ef.size
+		}));
+
 		// create db record
 		const ban = Ban.create({
 			userId: config.targetUser.id,
@@ -1628,7 +1645,8 @@ export class ShareBanCommand extends Command {
 			reason: config.reason,
 			userFacingReason: config.userFacingReason || null,
 			privatiseReason: config.privatiseReason,
-			moderatorsInvolved: config.moderatorsInvolved
+			moderatorsInvolved: config.moderatorsInvolved,
+			evidence: evidenceEntries
 		});
 
 		console.log(`[CMD] /shareban: COMPLETED by userId=${originalInteraction.user.id} banId=${ban.id} targetUserId=${config.targetUser.id}`);
